@@ -1,8 +1,19 @@
 """Interaktiv kalkulator. Start med ``python cli.py`` og avslutt med ``q``."""
 
+import ast
 import math
 
 import calc
+
+
+OPERATIONS = {
+    ast.Add: calc.add,
+    ast.Sub: calc.subtract,
+    ast.Mult: calc.multiply,
+    ast.Div: calc.divide,
+    ast.Mod: calc.modulo,
+    ast.Pow: calc.power,
+}
 
 
 BINARY_OPERATIONS = {
@@ -39,21 +50,77 @@ def parse_expression(expression):
 
 def evaluate_expression(expression):
     """Tolk regnestykket og beregn svaret med funksjonene i calc."""
-    operator, operands = parse_expression(expression)
+    try:
+        operator, operands = parse_expression(expression)
+    except ValueError:
+        # Behold også uttrykk uten mellomrom, parenteser og sammensatte uttrykk.
+        return calculate(expression)
     operation = calc.sqrt if operator == "sqrt" else BINARY_OPERATIONS[operator]
-    return operation(*operands)
+    return _validate_result(operation(*operands))
+
+
+def _validate_result(result):
+    if isinstance(result, complex):
+        raise ValueError("Kan bare regne med reelle tall")
+    if isinstance(result, float) and not math.isfinite(result):
+        raise ValueError("Ugyldig tall. Bruk endelige tall.")
+    return result
+
+
+def _evaluate(node):
+    if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+        return _validate_result(node.value)
+    if isinstance(node, ast.BinOp) and type(node.op) in OPERATIONS:
+        left = _evaluate(node.left)
+        right = _evaluate(node.right)
+        if isinstance(node.op, ast.Pow) and left == 0 and right < 0:
+            raise ValueError("Null kan ikke opphøyes i en negativ potens")
+        result = OPERATIONS[type(node.op)](left, right)
+        return _validate_result(result)
+    if isinstance(node, ast.UnaryOp):
+        if isinstance(node.op, ast.UAdd):
+            return _evaluate(node.operand)
+        if isinstance(node.op, ast.USub):
+            return calc.subtract(0, _evaluate(node.operand))
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "sqrt"
+        and len(node.args) == 1
+        and not node.keywords
+    ):
+        return _validate_result(calc.sqrt(_evaluate(node.args[0])))
+    raise ValueError(
+        "Bruk bare tall, parenteser, +, -, *, /, %, ** og sqrt(tall)"
+    )
+
+
+def calculate(expression):
+    """Regn ut et uttrykk med funksjonene i calc, uten å kjøre Python-kode."""
+    try:
+        tree = ast.parse(expression.strip(), mode="eval")
+    except (SyntaxError, ValueError):
+        raise ValueError(
+            "Ugyldig regnestykke. Prøv for eksempel 2 + 3 eller sqrt(9)"
+        ) from None
+    return _evaluate(tree.body)
 
 
 def main():
-    print("Kalkulator: Bruk +, -, *, /, %, ^ eller sqrt. Skriv q for å avslutte.")
+    """Les regnestykker til brukeren skriver q eller avslutter inndata."""
+    print("Skriv et regnestykke, for eksempel 2 + 3 eller sqrt(9).")
+    print("Regnearter: +, -, *, /, %, ** eller ^. Også sqrt 16. Skriv q for å avslutte.")
     while True:
         try:
-            expression = input("Skriv et regnestykke: ").strip()
+            expression = input("> ").strip()
         except (EOFError, KeyboardInterrupt):
-            print()
-            break
-        if expression == "q":
-            break
+            print("\nHa det!")
+            return
+        if expression.lower() == "q":
+            print("Ha det!")
+            return
+        if not expression:
+            continue
         try:
             result = evaluate_expression(expression)
         except ValueError as error:
@@ -62,8 +129,13 @@ def main():
             print("Feil: Regnestykket innebærer deling på null (også ved modulo).")
         except OverflowError:
             print("Feil: Resultatet er for stort. Prøv mindre tall.")
+        except RecursionError:
+            print("Feil: Regnestykket er for komplisert")
         else:
-            print(f"Svar: {result}")
+            try:
+                print(f"Svar: {result}")
+            except ValueError:
+                print("Feil: Tallet er for stort til å vises")
 
 
 if __name__ == "__main__":
