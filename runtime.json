@@ -1,0 +1,6 @@
+{
+  "harness": "claude",
+  "provider": "anthropic",
+  "model": "sonnet",
+  "effort": "high"
+}

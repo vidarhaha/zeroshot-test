@@ -1,0 +1,3 @@
+{
+  "task": "Lag et Python-script calc.py med funksjonene add, subtract, multiply og divide. divide skal gi en tydelig feilmelding ved deling på null. Skriv tester med pytest i test_calc.py. Alle tester skal passere."
+}
