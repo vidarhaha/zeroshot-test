@@ -1,3 +1,0 @@
-{
-  "task": "Utvid calc.py med funksjonene power og sqrt. sqrt skal gi en tydelig feilmelding ved negative tall. Legg til tester i test_calc.py. Alle tester skal passere."
-}
