@@ -1,6 +1,6 @@
 import pytest
 
-from calc import add, divide, multiply, power, sqrt, subtract
+from calc import add, divide, modulo, multiply, power, sqrt, subtract
 
 
 def test_add():
@@ -26,6 +26,21 @@ def test_divide():
 def test_divide_by_zero_raises_clear_error():
     with pytest.raises(ZeroDivisionError, match="Kan ikke dele på null"):
         divide(1, 0)
+
+
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [(10, 3, 1), (10, 2, 0), (0, 3, 0), (-10, 3, 2), (10, -3, -2), (5.5, 2, 1.5)],
+)
+def test_modulo(a, b, expected):
+    assert modulo(a, b) == expected
+
+
+@pytest.mark.parametrize("a", [1, 0])
+@pytest.mark.parametrize("b", [0, 0.0, -0.0])
+def test_modulo_by_zero_raises_clear_error(a, b):
+    with pytest.raises(ZeroDivisionError, match="^Kan ikke ta modulo med null$"):
+        modulo(a, b)
 
 
 def test_power():

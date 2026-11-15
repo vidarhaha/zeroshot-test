@@ -1,4 +1,4 @@
-"""Enkel kalkulator med de fire grunnleggende regneartene, samt potens og kvadratrot."""
+"""Enkel kalkulator med grunnleggende regnearter, modulo, potens og kvadratrot."""
 
 import math
 
@@ -19,6 +19,12 @@ def divide(a, b):
     if b == 0:
         raise ZeroDivisionError("Kan ikke dele på null")
     return a / b
+
+
+def modulo(a, b):
+    if b == 0:
+        raise ZeroDivisionError("Kan ikke ta modulo med null")
+    return a % b
 
 
 def power(a, b):
