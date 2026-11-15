@@ -1,6 +1,7 @@
-"""Interaktiv kalkulator. Start med ``python cli.py`` og avslutt med q."""
+"""Interaktiv kalkulator. Start med ``python cli.py`` og avslutt med ``q``."""
 
 import ast
+import math
 
 import calc
 
@@ -15,18 +16,67 @@ OPERATIONS = {
 }
 
 
+BINARY_OPERATIONS = {
+    "+": calc.add,
+    "-": calc.subtract,
+    "*": calc.multiply,
+    "/": calc.divide,
+    "%": calc.modulo,
+    "^": calc.power,
+}
+
+
+def parse_expression(expression):
+    """Returner regneart og tall fra et binært uttrykk eller ``sqrt tall``."""
+    parts = expression.split()
+    if len(parts) == 2 and parts[0] == "sqrt":
+        operator, numbers = "sqrt", parts[1:]
+    elif len(parts) == 3 and parts[1] in BINARY_OPERATIONS:
+        operator, numbers = parts[1], (parts[0], parts[2])
+    else:
+        raise ValueError(
+            "Ugyldig regnestykke. Bruk mellomrom, for eksempel '10 + 3', "
+            "'2 ^ 8', 'sqrt 16' eller '10 % 3'."
+        )
+
+    try:
+        operands = tuple(float(number) for number in numbers)
+    except ValueError:
+        raise ValueError("Ugyldig tall. Bruk tall som 10, -3 eller 2.5.") from None
+    if not all(math.isfinite(number) for number in operands):
+        raise ValueError("Ugyldig tall. Bruk endelige tall.")
+    return operator, operands
+
+
+def evaluate_expression(expression):
+    """Tolk regnestykket og beregn svaret med funksjonene i calc."""
+    try:
+        operator, operands = parse_expression(expression)
+    except ValueError:
+        # Behold også uttrykk uten mellomrom, parenteser og sammensatte uttrykk.
+        return calculate(expression)
+    operation = calc.sqrt if operator == "sqrt" else BINARY_OPERATIONS[operator]
+    return _validate_result(operation(*operands))
+
+
+def _validate_result(result):
+    if isinstance(result, complex):
+        raise ValueError("Kan bare regne med reelle tall")
+    if isinstance(result, float) and not math.isfinite(result):
+        raise ValueError("Ugyldig tall. Bruk endelige tall.")
+    return result
+
+
 def _evaluate(node):
     if isinstance(node, ast.Constant) and type(node.value) in (int, float):
-        return node.value
+        return _validate_result(node.value)
     if isinstance(node, ast.BinOp) and type(node.op) in OPERATIONS:
         left = _evaluate(node.left)
         right = _evaluate(node.right)
         if isinstance(node.op, ast.Pow) and left == 0 and right < 0:
             raise ValueError("Null kan ikke opphøyes i en negativ potens")
         result = OPERATIONS[type(node.op)](left, right)
-        if isinstance(result, complex):
-            raise ValueError("Kan bare regne med reelle tall")
-        return result
+        return _validate_result(result)
     if isinstance(node, ast.UnaryOp):
         if isinstance(node.op, ast.UAdd):
             return _evaluate(node.operand)
@@ -39,7 +89,7 @@ def _evaluate(node):
         and len(node.args) == 1
         and not node.keywords
     ):
-        return calc.sqrt(_evaluate(node.args[0]))
+        return _validate_result(calc.sqrt(_evaluate(node.args[0])))
     raise ValueError(
         "Bruk bare tall, parenteser, +, -, *, /, %, ** og sqrt(tall)"
     )
@@ -59,7 +109,7 @@ def calculate(expression):
 def main():
     """Les regnestykker til brukeren skriver q eller avslutter inndata."""
     print("Skriv et regnestykke, for eksempel 2 + 3 eller sqrt(9).")
-    print("Regnearter: +, -, *, /, %, **. Skriv q for å avslutte.")
+    print("Regnearter: +, -, *, /, %, ** eller ^. Også sqrt 16. Skriv q for å avslutte.")
     while True:
         try:
             expression = input("> ").strip()
@@ -72,16 +122,18 @@ def main():
         if not expression:
             continue
         try:
-            result = calculate(expression)
-        except (ValueError, ZeroDivisionError) as error:
+            result = evaluate_expression(expression)
+        except ValueError as error:
             print(f"Feil: {error}")
+        except ZeroDivisionError:
+            print("Feil: Regnestykket innebærer deling på null (også ved modulo).")
         except OverflowError:
-            print("Feil: Tallet er for stort til å beregnes")
+            print("Feil: Resultatet er for stort. Prøv mindre tall.")
         except RecursionError:
             print("Feil: Regnestykket er for komplisert")
         else:
             try:
-                print(f"Resultat: {result}")
+                print(f"Svar: {result}")
             except ValueError:
                 print("Feil: Tallet er for stort til å vises")
 
